@@ -1,7 +1,7 @@
 // WorkDay Online 2026 — Dashboard Overview
 // Design: Stats cards + recent records + mini summary
 
-import { WorkRecord, MONTH_LABELS, STATUS_LABELS } from "@/lib/data";
+import { WorkRecord, MONTHS, MONTH_LABELS, STATUS_LABELS } from "@/lib/data";
 import { CheckCircle2, Clock, Calendar, TrendingUp, ArrowRight } from "lucide-react";
 
 interface DashboardOverviewProps {
@@ -52,7 +52,7 @@ export default function DashboardOverview({ records, onNavigate }: DashboardOver
   // By month
 
 
-  const byMonth = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย."].map((m) => ({
+  const byMonth = MONTHS.map((m) => ({
     month: m,
     label: MONTH_LABELS[m],
     total: records.filter((r) => r.month === m).length,
@@ -95,7 +95,7 @@ export default function DashboardOverview({ records, onNavigate }: DashboardOver
         <StatCard
           label="รายการทั้งหมด"
           value={total}
-          sub="ม.ค.–มี.ค. 2026"
+          sub="ข้อมูลทั้งหมด"
           color="oklch(0.511 0.262 276.966)"
           icon={Calendar}
         />

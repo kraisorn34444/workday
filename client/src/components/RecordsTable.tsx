@@ -13,6 +13,7 @@ import {
   PRODUCTS,
   OS_LIST,
   getNextId,
+  normalizeMonth,
 } from "@/lib/data";
 import { exportFilteredRecords } from "@/lib/export";
 import ImageUploader from "./ImageUploader";
@@ -35,6 +36,9 @@ import { toast } from "sonner";
 interface RecordsTableProps {
   records: WorkRecord[];
   onUpdateRecords: (records: WorkRecord[]) => void;
+  editRecordId?: number | null;
+  editRequestKey?: number;
+  onEditModalClose?: () => void;
 }
 
 const emptyForm: Omit<WorkRecord, "id"> = {
@@ -51,7 +55,7 @@ const emptyForm: Omit<WorkRecord, "id"> = {
   images: [],
 };
 
-export default function RecordsTable({ records, onUpdateRecords }: RecordsTableProps) {
+export default function RecordsTable({ records, onUpdateRecords, editRecordId, editRequestKey, onEditModalClose }: RecordsTableProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   
@@ -67,6 +71,21 @@ export default function RecordsTable({ records, onUpdateRecords }: RecordsTableP
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryImages, setGalleryImages] = useState<WorkImage[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  const closeModal = () => {
+    setShowModal(false);
+    if (onEditModalClose) onEditModalClose();
+  };
+
+  useEffect(() => {
+    if (!editRecordId) return;
+    if (showModal && editRecord?.id === editRecordId) return;
+
+    const record = records.find((r) => r.id === editRecordId);
+    if (record) {
+      openEdit(record);
+    }
+  }, [editRecordId, editRequestKey, editRecord, records, showModal]);
 
   // tRPC mutations
   const createMutation = trpc.workRecords.create.useMutation();
@@ -107,10 +126,11 @@ export default function RecordsTable({ records, onUpdateRecords }: RecordsTableP
       toast.error("เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถแก้ไขรายการได้");
       return;
     }
+    const normalizedMonth = normalizeMonth(r.month, r.date);
     setEditRecord(r);
     setForm({
       date: r.date,
-      month: r.month,
+      month: normalizedMonth,
       customer_name: r.customer_name,
       customer_phone: r.customer_phone,
       product: r.product,
@@ -141,6 +161,8 @@ export default function RecordsTable({ records, onUpdateRecords }: RecordsTableP
       return;
     }
 
+    const normalizedMonth = normalizeMonth(form.month, form.date);
+
     setIsSaving(true);
     try {
       if (editRecord) {
@@ -148,7 +170,7 @@ export default function RecordsTable({ records, onUpdateRecords }: RecordsTableP
         await updateMutation.mutateAsync({
           id: editRecord.id,
           date: form.date,
-          month: form.month,
+          month: normalizedMonth,
           customerName: form.customer_name,
           customerPhone: form.customer_phone,
           product: form.product,
@@ -163,7 +185,7 @@ export default function RecordsTable({ records, onUpdateRecords }: RecordsTableP
         // Create new record
         await createMutation.mutateAsync({
           date: form.date,
-          month: form.month,
+          month: normalizedMonth,
           customerName: form.customer_name,
           customerPhone: form.customer_phone,
           product: form.product,
@@ -179,6 +201,7 @@ export default function RecordsTable({ records, onUpdateRecords }: RecordsTableP
       // Invalidate and refetch data
       await utils.workRecords.list.invalidate();
       setShowModal(false);
+      if (onEditModalClose) onEditModalClose();
     } catch (error) {
       toast.error("เกิดข้อผิดพลาด: " + (error instanceof Error ? error.message : "Unknown error"));
     } finally {
@@ -202,8 +225,21 @@ export default function RecordsTable({ records, onUpdateRecords }: RecordsTableP
 
   // Auto-set month from date
   const handleDateChange = (date: string) => {
-    const month = parseInt(date.slice(5, 7));
-    const monthMap: Record<number, Month> = { 1: "ม.ค.", 2: "ก.พ.", 3: "มี.ค." };
+    const month = parseInt(date.slice(5, 7), 10);
+    const monthMap: Record<number, Month> = {
+      1: "ม.ค.",
+      2: "ก.พ.",
+      3: "มี.ค.",
+      4: "เม.ย.",
+      5: "พ.ค.",
+      6: "มิ.ย.",
+      7: "ก.ค.",
+      8: "ส.ค.",
+      9: "ก.ย.",
+      10: "ต.ค.",
+      11: "พ.ย.",
+      12: "ธ.ค.",
+    };
     setForm((f) => ({
       ...f,
       date,
@@ -394,7 +430,7 @@ export default function RecordsTable({ records, onUpdateRecords }: RecordsTableP
                 {editRecord ? "แก้ไขรายการ" : "เพิ่มรายการใหม่"}
               </h2>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
                 disabled={isSaving}
                 className="text-muted-foreground hover:text-foreground disabled:opacity-50"
               >
@@ -403,30 +439,14 @@ export default function RecordsTable({ records, onUpdateRecords }: RecordsTableP
             </div>
 
             <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">วันที่</label>
-                  <input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => handleDateChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">เดือน</label>
-                  <select
-                    value={form.month}
-                    onChange={(e) => setForm({ ...form, month: e.target.value as Month })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground"
-                  >
-                    {MONTHS.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">วันที่</label>
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => handleDateChange(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -540,7 +560,7 @@ export default function RecordsTable({ records, onUpdateRecords }: RecordsTableP
 
               <div className="flex gap-3 justify-end pt-4 border-t border-border">
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={closeModal}
                   disabled={isSaving}
                   className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted disabled:opacity-50"
                 >

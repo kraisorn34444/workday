@@ -1063,19 +1063,66 @@ export function getNextId(records: WorkRecord[]): number {
   return Math.max(...records.map((r) => r.id)) + 1;
 }
 
-export const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค."] as const;
+export const MONTHS = [
+  "ม.ค.",
+  "ก.พ.",
+  "มี.ค.",
+  "เม.ย.",
+  "พ.ค.",
+  "มิ.ย.",
+  "ก.ค.",
+  "ส.ค.",
+  "ก.ย.",
+  "ต.ค.",
+  "พ.ย.",
+  "ธ.ค.",
+] as const;
 export type Month = (typeof MONTHS)[number];
 
 export const MONTH_LABELS: Record<string, string> = {
   "ม.ค.": "มกราคม 2026",
   "ก.พ.": "กุมภาพันธ์ 2026",
   "มี.ค.": "มีนาคม 2026",
+  "เม.ย.": "เมษายน 2026",
+  "พ.ค.": "พฤษภาคม 2026",
+  "มิ.ย.": "มิถุนายน 2026",
+  "ก.ค.": "กรกฎาคม 2026",
+  "ส.ค.": "สิงหาคม 2026",
+  "ก.ย.": "กันยายน 2026",
+  "ต.ค.": "ตุลาคม 2026",
+  "พ.ย.": "พฤศจิกายน 2026",
+  "ธ.ค.": "ธันวาคม 2026",
 };
+
+export function normalizeMonth(month: string, fallbackDate?: string): Month {
+  const cleaned = month.trim().replace(/\s+/g, "");
+  const normalized = cleaned.endsWith(".") ? cleaned : `${cleaned}.`;
+  const canonical = MONTHS.find((m) => m === normalized || m.replace(/\./g, "") === normalized.replace(/\./g, ""));
+  if (canonical) return canonical;
+
+  if (fallbackDate) {
+    const monthNum = parseInt(fallbackDate.slice(5, 7), 10);
+    if (monthNum >= 1 && monthNum <= 12) {
+      return MONTHS[monthNum - 1];
+    }
+  }
+
+  return "ม.ค.";
+}
 
 export const MONTH_NUMBERS: Record<string, number> = {
   "ม.ค.": 1,
   "ก.พ.": 2,
   "มี.ค.": 3,
+  "เม.ย.": 4,
+  "พ.ค.": 5,
+  "มิ.ย.": 6,
+  "ก.ค.": 7,
+  "ส.ค.": 8,
+  "ก.ย.": 9,
+  "ต.ค.": 10,
+  "พ.ย.": 11,
+  "ธ.ค.": 12,
 };
 
 export const STATUS_LABELS: Record<WorkStatus, string> = {

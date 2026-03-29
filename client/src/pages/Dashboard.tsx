@@ -9,7 +9,7 @@ import DashboardOverview from "@/components/DashboardOverview";
 import CalendarView from "@/components/CalendarView";
 import RecordsTable from "@/components/RecordsTable";
 import StatsView from "@/components/StatsView";
-import { loadRecords, saveRecords, WorkRecord } from "@/lib/data";
+import { loadRecords, saveRecords, normalizeMonth, WorkRecord } from "@/lib/data";
 import { trpc } from "@/lib/trpc";
 import { Loader2 } from "lucide-react";
 
@@ -21,6 +21,8 @@ export default function Dashboard() {
   const [records, setRecords] = useState<WorkRecord[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string | undefined>(undefined);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [pendingEditRecordId, setPendingEditRecordId] = useState<number | null>(null);
+  const [editRequestKey, setEditRequestKey] = useState(0);
   const [isInitializing, setIsInitializing] = useState(true);
 
   // Load from API Database
@@ -53,7 +55,7 @@ export default function Dashboard() {
       const converted = (dbRecords as any[]).map((r: any) => ({
         id: r.id,
         date: r.date,
-        month: r.month,
+        month: normalizeMonth(r.month, r.date),
         customer_name: r.customerName || "",
         customer_phone: r.customerPhone || "",
         product: r.product || "",
@@ -79,13 +81,14 @@ export default function Dashboard() {
 
   // Filter records by selected month and year
   const filteredRecords = records.filter((r) => {
-    // Check year from date (YYYY-MM-DD)
     const recordYear = parseInt(r.date.slice(0, 4));
     if (recordYear !== selectedYear) return false;
-    
-    // Check month if selected
-    if (selectedMonth && r.month !== selectedMonth) return false;
-    
+
+    if (selectedMonth) {
+      const recordMonth = normalizeMonth(r.month, r.date);
+      if (recordMonth !== selectedMonth) return false;
+    }
+
     return true;
   });
 
@@ -142,10 +145,24 @@ export default function Dashboard() {
           <DashboardOverview records={filteredRecords} onNavigate={setActiveTab} />
         )}
         {activeTab === "calendar" && (
-          <CalendarView records={filteredRecords} />
+          <CalendarView
+            records={filteredRecords}
+            onEditRecord={(record) => {
+              setPendingEditRecordId(record.id);
+              setEditRequestKey((prev) => prev + 1);
+              setSelectedMonth(record.month);
+              setActiveTab("records");
+            }}
+          />
         )}
         {activeTab === "records" && (
-          <RecordsTable records={records} onUpdateRecords={handleUpdateRecords} />
+          <RecordsTable
+            records={records}
+            onUpdateRecords={handleUpdateRecords}
+            editRecordId={pendingEditRecordId}
+            editRequestKey={editRequestKey}
+            onEditModalClose={() => setPendingEditRecordId(null)}
+          />
         )}
         {activeTab === "stats" && (
           <StatsView records={filteredRecords} />

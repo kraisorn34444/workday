@@ -1,17 +1,18 @@
 // WorkDay Online 2026 — Calendar View
 // Design: Monthly calendar with work day indicators
 
-import { useState } from "react";
-import { WorkRecord, MONTHS, MONTH_LABELS, MONTH_NUMBERS, STATUS_LABELS } from "@/lib/data";
+import { useEffect, useState } from "react";
+import { WorkRecord, MONTHS, MONTH_LABELS, MONTH_NUMBERS, STATUS_LABELS, normalizeMonth } from "@/lib/data";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface CalendarViewProps {
   records: WorkRecord[];
+  onEditRecord?: (record: WorkRecord) => void;
 }
 
 const DAY_NAMES = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 
-export default function CalendarView({ records }: CalendarViewProps) {
+export default function CalendarView({ records, onEditRecord }: CalendarViewProps) {
   const [selectedMonth, setSelectedMonth] = useState<string>("ม.ค.");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -24,7 +25,31 @@ export default function CalendarView({ records }: CalendarViewProps) {
   const daysInMonth = new Date(year, monthNum, 0).getDate();
 
   // Records for this month
-  const monthRecords = records.filter((r) => r.month === selectedMonth);
+  const monthRecords = records.filter((r) => {
+    const recordMonth = normalizeMonth(r.month, r.date);
+    return recordMonth === selectedMonth;
+  });
+
+  // Auto-select first month with data when records change
+  const recordMonths = Array.from(
+    new Set(
+      records
+        .map((r) => normalizeMonth(r.month, r.date))
+        .filter((m): m is (typeof MONTHS)[number] => MONTHS.includes(m as (typeof MONTHS)[number]))
+    )
+  );
+  const sortedRecordMonths = [...recordMonths].sort(
+    (a, b) => MONTH_NUMBERS[a] - MONTH_NUMBERS[b]
+  );
+
+  useEffect(() => {
+    if (
+      sortedRecordMonths.length > 0 &&
+      !sortedRecordMonths.includes(selectedMonth as (typeof MONTHS)[number])
+    ) {
+      setSelectedMonth(sortedRecordMonths[0]);
+    }
+  }, [sortedRecordMonths.join(","), selectedMonth]);
 
   // Map date -> records
   const dateMap: Record<string, WorkRecord[]> = {};
@@ -224,9 +249,19 @@ export default function CalendarView({ records }: CalendarViewProps) {
                       <p className="text-xs text-muted-foreground">{r.customer_phone}</p>
                     )}
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 status-${r.status}`}>
-                    {STATUS_LABELS[r.status]}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 status-${r.status}`}>
+                      {STATUS_LABELS[r.status]}
+                    </span>
+                    {onEditRecord && (
+                      <button
+                        onClick={() => onEditRecord(r)}
+                        className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
+                      >
+                        แก้ไข
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {r.product && (
                   <p className="text-xs text-muted-foreground mb-1">
@@ -262,6 +297,7 @@ export default function CalendarView({ records }: CalendarViewProps) {
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">ลูกค้า</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">อุปกรณ์</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">สถานะ</th>
+                <th className="text-center px-4 py-3 font-semibold text-muted-foreground">การกระทำ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -292,6 +328,18 @@ export default function CalendarView({ records }: CalendarViewProps) {
                     <span className={`text-xs px-2 py-0.5 rounded-full status-${r.status}`}>
                       {STATUS_LABELS[r.status]}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {onEditRecord ? (
+                      <button
+                        onClick={() => onEditRecord(r)}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                      >
+                        แก้ไข
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
