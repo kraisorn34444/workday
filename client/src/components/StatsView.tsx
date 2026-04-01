@@ -1,7 +1,7 @@
 // WorkDay Online 2026 — Statistics View
 // Design: Charts using Recharts + summary cards
 
-import { WorkRecord, MONTH_LABELS, STATUS_LABELS } from "@/lib/data";
+import { WorkRecord, MONTHS, MONTH_LABELS, STATUS_LABELS } from "@/lib/data";
 import {
   BarChart,
   Bar,
@@ -18,6 +18,7 @@ import {
 
 interface StatsViewProps {
   records: WorkRecord[];
+  year: number;
 }
 
 const INDIGO = "oklch(0.511 0.262 276.966)";
@@ -25,17 +26,17 @@ const GREEN = "#16a34a";
 const AMBER = "#d97706";
 const RED = "#dc2626";
 
-export default function StatsView({ records }: StatsViewProps) {
+export default function StatsView({ records, year }: StatsViewProps) {
   const total = records.length;
   const completed = records.filter((r) => r.status === "completed").length;
   const pending = records.filter((r) => r.status === "pending").length;
   const cancelled = records.filter((r) => r.status === "cancelled").length;
 
   // By month
-  const monthData = ["ม.ค.", "ก.พ.", "มี.ค."].map((m) => {
+  const monthData = MONTHS.map((m) => {
     const mr = records.filter((r) => r.month === m);
     return {
-      name: m,
+      name: MONTH_LABELS[m],
       total: mr.length,
       เสร็จสิ้น: mr.filter((r) => r.status === "completed").length,
       รอดำเนินการ: mr.filter((r) => r.status === "pending").length,
@@ -80,7 +81,7 @@ export default function StatsView({ records }: StatsViewProps) {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-foreground">สถิติและรายงาน</h1>
-        <p className="text-sm text-muted-foreground">ข้อมูลรวม ม.ค.–มี.ค. 2026</p>
+        <p className="text-sm text-muted-foreground">ข้อมูลรวม {year}</p>
       </div>
 
       {/* Summary cards */}
@@ -259,7 +260,7 @@ export default function StatsView({ records }: StatsViewProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {["ม.ค.", "ก.พ.", "มี.ค."].map((m) => {
+              {MONTHS.map((m) => {
                 const mr = records.filter((r) => r.month === m);
                 const c = mr.filter((r) => r.status === "completed").length;
                 const p = mr.filter((r) => r.status === "pending").length;

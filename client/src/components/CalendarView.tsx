@@ -2,23 +2,23 @@
 // Design: Monthly calendar with work day indicators
 
 import { useEffect, useState } from "react";
-import { WorkRecord, MONTHS, MONTH_LABELS, MONTH_NUMBERS, STATUS_LABELS, normalizeMonth } from "@/lib/data";
+import { WorkRecord, MONTHS, MONTH_LABELS, MONTH_NUMBERS, STATUS_LABELS, normalizeMonth, formatMonthLabel } from "@/lib/data";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface CalendarViewProps {
   records: WorkRecord[];
+  year: number;
   onEditRecord?: (record: WorkRecord) => void;
 }
 
 const DAY_NAMES = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 
-export default function CalendarView({ records, onEditRecord }: CalendarViewProps) {
-  const [selectedMonth, setSelectedMonth] = useState<string>("ม.ค.");
+export default function CalendarView({ records, year, onEditRecord }: CalendarViewProps) {
+  const [selectedMonth, setSelectedMonth] = useState<string>(MONTHS[new Date().getMonth()]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const monthIdx = MONTHS.indexOf(selectedMonth as (typeof MONTHS)[number]);
   const monthNum = MONTH_NUMBERS[selectedMonth];
-  const year = 2026;
 
   // Build calendar grid
   const firstDay = new Date(year, monthNum - 1, 1).getDay(); // 0=Sun
@@ -41,15 +41,6 @@ export default function CalendarView({ records, onEditRecord }: CalendarViewProp
   const sortedRecordMonths = [...recordMonths].sort(
     (a, b) => MONTH_NUMBERS[a] - MONTH_NUMBERS[b]
   );
-
-  useEffect(() => {
-    if (
-      sortedRecordMonths.length > 0 &&
-      !sortedRecordMonths.includes(selectedMonth as (typeof MONTHS)[number])
-    ) {
-      setSelectedMonth(sortedRecordMonths[0]);
-    }
-  }, [sortedRecordMonths.join(","), selectedMonth]);
 
   // Map date -> records
   const dateMap: Record<string, WorkRecord[]> = {};
@@ -123,7 +114,7 @@ export default function CalendarView({ records, onEditRecord }: CalendarViewProp
         {/* Calendar grid */}
         <div className="lg:col-span-2 bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-border">
-            <h2 className="font-semibold text-foreground">{MONTH_LABELS[selectedMonth]}</h2>
+            <h2 className="font-semibold text-foreground">{formatMonthLabel(selectedMonth as (typeof MONTHS)[number], year)}</h2>
           </div>
           <div className="p-4">
             {/* Day names */}
@@ -220,7 +211,7 @@ export default function CalendarView({ records, onEditRecord }: CalendarViewProp
           <div className="px-5 py-4 border-b border-border">
             <h2 className="font-semibold text-foreground">
               {selectedDate
-                ? `${parseInt(selectedDate)} ${MONTH_LABELS[selectedMonth]}`
+                ? `${parseInt(selectedDate)} ${formatMonthLabel(selectedMonth as (typeof MONTHS)[number], year)}`
                 : "เลือกวันที่"}
             </h2>
             {selectedDate && (

@@ -96,16 +96,16 @@ export async function getUserByOpenId(openId: string) {
 
 // Work Records queries
 import { and, desc } from "drizzle-orm";
-import { workRecords, workRecordImages, InsertWorkRecord, InsertWorkRecordImage } from "../drizzle/schema";
+import { workRecords, workRecordImages, InsertWorkRecord, InsertWorkRecordImage, WorkRecord, WorkRecordImage } from "../drizzle/schema";
+
+export type WorkRecordWithImages = WorkRecord & { images: WorkRecordImage[] };
 
 export async function createWorkRecord(record: InsertWorkRecord) {
   const db = await getDb();
   if (!db) return null;
   try {
-    const result = await db.insert(workRecords).values(record);
-    const id = (result as any).insertId as number;
-    const created = await db.select().from(workRecords).where(eq(workRecords.id, id)).limit(1);
-    return created.length > 0 ? created[0] : null;
+    const result = await db.insert(workRecords).values(record).returning();
+    return result.length > 0 ? result[0] : null;
   } catch (error) {
     console.error("[Database] Failed to create work record:", error);
     return null;
@@ -118,7 +118,23 @@ export async function getWorkRecordsByUser(userId: number, month?: string) {
   try {
     const conditions = [eq(workRecords.userId, userId)];
     if (month) conditions.push(eq(workRecords.month, month));
-    return await db.select().from(workRecords).where(and(...conditions)).orderBy(desc(workRecords.date));
+    const records = await db
+      .select()
+      .from(workRecords)
+      .where(and(...conditions))
+      .orderBy(desc(workRecords.date));
+
+    const recordsWithImages = await Promise.all(
+      records.map(async (record) => {
+        const images = await getWorkRecordImages(record.id);
+        return {
+          ...record,
+          images,
+        };
+      })
+    );
+
+    return recordsWithImages;
   } catch (error) {
     console.error("[Database] Failed to get work records:", error);
     return [];
@@ -154,8 +170,8 @@ export async function addWorkRecordImage(recordId: number, filename: string, url
   const db = await getDb();
   if (!db) return null;
   try {
-    const result = await db.insert(workRecordImages).values({ recordId, filename, url });
-    return (result as any).insertId as number;
+    const result = await db.insert(workRecordImages).values({ recordId, filename, url }).returning();
+    return result.length > 0 ? result[0] : null;
   } catch (error) {
     console.error("[Database] Failed to add work record image:", error);
     return null;

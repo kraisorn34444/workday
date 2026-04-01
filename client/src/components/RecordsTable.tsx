@@ -17,7 +17,7 @@ import {
 } from "@/lib/data";
 import { exportFilteredRecords } from "@/lib/export";
 import ImageUploader from "./ImageUploader";
-import ImageGallery from "./ImageGallery";
+import ImageViewer from "./ImageViewer";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
@@ -70,6 +70,7 @@ export default function RecordsTable({ records, onUpdateRecords, editRecordId, e
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryImages, setGalleryImages] = useState<WorkImage[]>([]);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
   const closeModal = () => {
@@ -90,6 +91,7 @@ export default function RecordsTable({ records, onUpdateRecords, editRecordId, e
   // tRPC mutations
   const createMutation = trpc.workRecords.create.useMutation();
   const updateMutation = trpc.workRecords.update.useMutation();
+  const addImageMutation = trpc.workRecords.addImage.useMutation();
   const deleteMutation = trpc.workRecords.delete.useMutation();
   const utils = trpc.useUtils();
 
@@ -165,38 +167,109 @@ export default function RecordsTable({ records, onUpdateRecords, editRecordId, e
 
     setIsSaving(true);
     try {
-      if (editRecord) {
-        // Update existing record
-        await updateMutation.mutateAsync({
-          id: editRecord.id,
-          date: form.date,
-          month: normalizedMonth,
-          customerName: form.customer_name,
-          customerPhone: form.customer_phone,
-          product: form.product,
-          os: form.os,
-          serviceType: form.service_type,
-          details: details.join(", "),
-          notes: notes.join(", "),
-          status: form.status as WorkStatus,
-        });
-        toast.success("แก้ไขรายการสำเร็จ");
-      } else {
-        // Create new record
-        await createMutation.mutateAsync({
-          date: form.date,
-          month: normalizedMonth,
-          customerName: form.customer_name,
-          customerPhone: form.customer_phone,
-          product: form.product,
-          os: form.os,
-          serviceType: form.service_type,
-          details: details.join(", "),
-          notes: notes.join(", "),
-          status: form.status as WorkStatus,
-        });
-        toast.success("เพิ่มรายการสำเร็จ");
+      const newImages = form.images.filter(
+      (img) => typeof img.id === "string" && img.id.startsWith("local-")
+    );
+
+    if (editRecord) {
+      // Update existing record
+      await updateMutation.mutateAsync({
+        id: editRecord.id,
+        date: form.date,
+        month: normalizedMonth,
+        customerName: form.customer_name,
+        customerPhone: form.customer_phone,
+        product: form.product,
+        os: form.os,
+        serviceType: form.service_type,
+        details: details.join(", "),
+        notes: notes.join(", "),
+        status: form.status as WorkStatus,
+      });
+
+      if (newImages.length > 0) {
+        await Promise.all(
+          newImages.map((image) =>
+            addImageMutation.mutateAsync({
+              recordId: editRecord.id,
+              filename: image.filename,
+              url: image.url,
+            })
+          )
+        );
       }
+
+      onUpdateRecords(
+        records.map((r) =>
+          r.id === editRecord.id
+            ? {
+                ...r,
+                date: form.date,
+                month: normalizedMonth,
+                customer_name: form.customer_name,
+                customer_phone: form.customer_phone,
+                product: form.product,
+                os: form.os,
+                service_type: form.service_type,
+                details,
+                notes,
+                status: form.status as WorkStatus,
+                images: form.images,
+              }
+            : r
+        )
+      );
+
+      toast.success("แก้ไขรายการสำเร็จ");
+    } else {
+      // Create new record
+      const created = await createMutation.mutateAsync({
+        date: form.date,
+        month: normalizedMonth,
+        customerName: form.customer_name,
+        customerPhone: form.customer_phone,
+        product: form.product,
+        os: form.os,
+        serviceType: form.service_type,
+        details: details.join(", "),
+        notes: notes.join(", "),
+        status: form.status as WorkStatus,
+      });
+
+      if (created?.id && newImages.length > 0) {
+        await Promise.all(
+          newImages.map((image) =>
+            addImageMutation.mutateAsync({
+              recordId: created.id,
+              filename: image.filename,
+              url: image.url,
+            })
+          )
+        );
+      }
+
+      if (created?.id) {
+        onUpdateRecords([
+          ...records,
+          {
+            id: created.id,
+            date: form.date,
+            month: normalizedMonth,
+            customer_name: form.customer_name,
+            customer_phone: form.customer_phone,
+            product: form.product,
+            os: form.os,
+            service_type: form.service_type,
+            details,
+            notes,
+            status: form.status as WorkStatus,
+            images: form.images,
+          },
+        ]);
+      }
+
+      toast.success("เพิ่มรายการสำเร็จ");
+    }
 
       // Invalidate and refetch data
       await utils.workRecords.list.invalidate();
@@ -380,6 +453,7 @@ export default function RecordsTable({ records, onUpdateRecords, editRecordId, e
                       <button
                         onClick={() => {
                           setGalleryImages(r.images);
+                          setGalleryIndex(0);
                           setGalleryOpen(true);
                         }}
                         className="text-primary hover:underline text-xs font-medium"
@@ -608,10 +682,21 @@ export default function RecordsTable({ records, onUpdateRecords, editRecordId, e
       )}
 
       {/* Image Gallery Modal */}
-      {galleryOpen && (
-        <ImageGallery
+      {galleryOpen && galleryImages.length > 0 && (
+        <ImageViewer
           images={galleryImages}
-          isOpen={galleryOpen}
+          currentIndex={galleryIndex}
+          onPrevious={() =>
+            setGalleryIndex((prev) =>
+              prev === 0 ? galleryImages.length - 1 : prev - 1
+            )
+          }
+          onNext={() =>
+            setGalleryIndex((prev) =>
+              prev === galleryImages.length - 1 ? 0 : prev + 1
+            )
+          }
+          onSelectIndex={(idx) => setGalleryIndex(idx)}
           onClose={() => setGalleryOpen(false)}
         />
       )}

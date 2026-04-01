@@ -14,7 +14,7 @@ import { trpc } from "@/lib/trpc";
 import { Loader2 } from "lucide-react";
 
 const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
-const YEARS = [2024, 2025, 2026, 2027, 2028];
+const YEARS = [2026, 2027, 2028, 2029, 2030];
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -50,26 +50,35 @@ export default function Dashboard() {
 
   // Update records when API data changes
   useEffect(() => {
-    if (dbRecords && dbRecords.length > 0) {
-      // Convert database records to WorkRecord format
-      const converted = (dbRecords as any[]).map((r: any) => ({
-        id: r.id,
-        date: r.date,
-        month: normalizeMonth(r.month, r.date),
-        customer_name: r.customerName || "",
-        customer_phone: r.customerPhone || "",
-        product: r.product || "",
-        os: r.os || "",
-        service_type: r.serviceType || "",
-        details: r.details ? r.details.split(",").map((d: string) => d.trim()) : [],
-        notes: r.notes ? r.notes.split(",").map((n: string) => n.trim()) : [],
-        status: r.status,
-        images: [],
-      }));
-      setRecords(converted);
-      // Also save to localStorage for offline access
-      saveRecords(converted);
-    }
+    if (!dbRecords) return;
+    // Convert database records to WorkRecord format
+    const converted = (dbRecords as any[]).map((r: any) => ({
+      id: r.id,
+      date: r.date,
+      month: normalizeMonth(r.month, r.date),
+      customer_name: r.customerName || "",
+      customer_phone: r.customerPhone || "",
+      product: r.product || "",
+      os: r.os || "",
+      service_type: r.serviceType || "",
+      details: r.details ? r.details.split(",").map((d: string) => d.trim()) : [],
+      notes: r.notes ? r.notes.split(",").map((n: string) => n.trim()) : [],
+      status: r.status,
+      images: Array.isArray(r.images)
+        ? r.images.map((img: any) => ({
+            id: img.id,
+            url: img.url,
+            filename: img.filename,
+            uploadedAt:
+              typeof img.uploadedAt === "string"
+                ? img.uploadedAt
+                : img.uploadedAt?.toISOString?.() || new Date().toISOString(),
+          }))
+        : [],
+    }));
+    setRecords(converted);
+    // Also save to localStorage for offline access
+    saveRecords(converted);
   }, [dbRecords]);
 
   const handleUpdateRecords = useCallback((updated: WorkRecord[]) => {
@@ -142,11 +151,12 @@ export default function Dashboard() {
         </div>
 
         {activeTab === "dashboard" && (
-          <DashboardOverview records={filteredRecords} onNavigate={setActiveTab} />
+          <DashboardOverview records={filteredRecords} year={selectedYear} onNavigate={setActiveTab} />
         )}
         {activeTab === "calendar" && (
           <CalendarView
             records={filteredRecords}
+            year={selectedYear}
             onEditRecord={(record) => {
               setPendingEditRecordId(record.id);
               setEditRequestKey((prev) => prev + 1);
@@ -165,7 +175,7 @@ export default function Dashboard() {
           />
         )}
         {activeTab === "stats" && (
-          <StatsView records={filteredRecords} />
+          <StatsView records={filteredRecords} year={selectedYear} />
         )}
       </main>
     </div>

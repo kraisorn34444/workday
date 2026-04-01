@@ -20,8 +20,8 @@ export interface WorkRecord {
 }
 
 export interface WorkImage {
-  id: string; // UUID or unique identifier
-  url: string; // S3 CDN URL
+  id: string | number; // UUID, unique identifier, or numeric DB id
+  url: string; // S3 CDN URL or data URI
   filename: string;
   uploadedAt: string; // ISO date string
 }
@@ -1079,20 +1079,25 @@ export const MONTHS = [
 ] as const;
 export type Month = (typeof MONTHS)[number];
 
-export const MONTH_LABELS: Record<string, string> = {
-  "ม.ค.": "มกราคม 2026",
-  "ก.พ.": "กุมภาพันธ์ 2026",
-  "มี.ค.": "มีนาคม 2026",
-  "เม.ย.": "เมษายน 2026",
-  "พ.ค.": "พฤษภาคม 2026",
-  "มิ.ย.": "มิถุนายน 2026",
-  "ก.ค.": "กรกฎาคม 2026",
-  "ส.ค.": "สิงหาคม 2026",
-  "ก.ย.": "กันยายน 2026",
-  "ต.ค.": "ตุลาคม 2026",
-  "พ.ย.": "พฤศจิกายน 2026",
-  "ธ.ค.": "ธันวาคม 2026",
+export const MONTH_LABELS: Record<Month, string> = {
+  "ม.ค.": "มกราคม",
+  "ก.พ.": "กุมภาพันธ์",
+  "มี.ค.": "มีนาคม",
+  "เม.ย.": "เมษายน",
+  "พ.ค.": "พฤษภาคม",
+  "มิ.ย.": "มิถุนายน",
+  "ก.ค.": "กรกฎาคม",
+  "ส.ค.": "สิงหาคม",
+  "ก.ย.": "กันยายน",
+  "ต.ค.": "ตุลาคม",
+  "พ.ย.": "พฤศจิกายน",
+  "ธ.ค.": "ธันวาคม",
 };
+
+export function formatMonthLabel(month: Month, year?: number | string): string {
+  const label = MONTH_LABELS[month] || month;
+  return year ? `${label} ${year}` : label;
+}
 
 export function normalizeMonth(month: string, fallbackDate?: string): Month {
   const cleaned = month.trim().replace(/\s+/g, "");

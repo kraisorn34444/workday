@@ -4,7 +4,7 @@
 import { WorkImage } from "@/lib/data";
 import { X, ChevronLeft, ChevronRight, Image as ImageIcon, Download } from "lucide-react";
 
-interface ImageGalleryProps {
+interface ImageViewerProps {
   images: WorkImage[];
   currentIndex: number;
   onClose: () => void;
@@ -13,14 +13,14 @@ interface ImageGalleryProps {
   onSelectIndex?: (index: number) => void;
 }
 
-export default function ImageGallery({
+export default function ImageViewer({
   images,
   currentIndex,
   onClose,
   onPrevious,
   onNext,
   onSelectIndex,
-}: ImageGalleryProps) {
+}: ImageViewerProps) {
   if (images.length === 0) return null;
 
   const index = Math.min(Math.max(currentIndex, 0), images.length - 1);

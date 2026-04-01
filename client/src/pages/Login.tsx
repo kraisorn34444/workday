@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { trpc } from "@/lib/trpc";
 
 export default function Login() {
   const [, navigate] = useLocation();
+  const trpcUtils = trpc.useContext();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -46,6 +48,7 @@ export default function Login() {
         return;
       }
       // ✅ login สำเร็จ
+      await trpcUtils.auth.me.fetch();
       navigate("/");
     } catch (err) {
       setError("เกิดข้อผิดพลาด");

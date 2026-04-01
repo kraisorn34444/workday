@@ -6,6 +6,7 @@ import { CheckCircle2, Clock, Calendar, TrendingUp, ArrowRight } from "lucide-re
 
 interface DashboardOverviewProps {
   records: WorkRecord[];
+  year: number;
   onNavigate: (tab: string) => void;
 }
 
@@ -43,7 +44,7 @@ function StatCard({
   );
 }
 
-export default function DashboardOverview({ records, onNavigate }: DashboardOverviewProps) {
+export default function DashboardOverview({ records, year, onNavigate }: DashboardOverviewProps) {
   const total = records.length;
   const completed = records.filter((r) => r.status === "completed").length;
   const pending = records.filter((r) => r.status === "pending").length;
@@ -82,6 +83,7 @@ export default function DashboardOverview({ records, onNavigate }: DashboardOver
         <div className="relative z-10">
           <h1 className="text-2xl font-bold mb-1">Work Online</h1>
           <p className="text-white/80 text-sm">ระบบจัดการงานบริการลูกค้า</p>
+          <p className="text-white/80 text-sm mt-2">ข้อมูลปี {year}</p>
         </div>
         <img
           src="https://d2xsxph8kpxj0f.cloudfront.net/310519663474678944/6pgxDTjqF9f8aeJgFqypbb/hero-bg-VQc4x7hq4tjLnXbR4LL2aE.webp"

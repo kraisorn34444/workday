@@ -5,6 +5,7 @@ import { useState, useRef } from "react";
 import { WorkImage } from "@/lib/data";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import ImageViewer from "./ImageViewer";
 
 interface ImageUploaderProps {
   images: WorkImage[];
@@ -14,7 +15,24 @@ interface ImageUploaderProps {
 
 export default function ImageUploader({ images, onImagesChange, maxImages = 5 }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const readFileAsDataUrl = (file: File) => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+        } else {
+          reject(new Error("ไม่สามารถอ่านไฟล์ภาพได้"));
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.currentTarget.files;
@@ -44,10 +62,9 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
           continue;
         }
 
-        // Create local preview URL
-        const url = URL.createObjectURL(file);
+        const url = await readFileAsDataUrl(file);
         const image: WorkImage = {
-          id: `${Date.now()}-${i}`,
+          id: `local-${Date.now()}-${i}`,
           url,
           filename: file.name,
           uploadedAt: new Date().toISOString(),
@@ -71,8 +88,8 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
     }
   };
 
-  const handleRemoveImage = (id: string) => {
-    const updatedImages = images.filter((img) => img.id !== id);
+  const handleRemoveImage = (id: string | number) => {
+    const updatedImages = images.filter((img) => String(img.id) !== String(id));
     onImagesChange(updatedImages);
     toast.success("ลบภาพสำเร็จ");
   };
@@ -121,10 +138,14 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
       {/* Image grid */}
       {images.length > 0 && (
         <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-          {images.map((image) => (
+          {images.map((image, index) => (
             <div
               key={image.id}
-              className="relative group rounded-lg overflow-hidden bg-muted border border-border"
+              className="relative group rounded-lg overflow-hidden bg-muted border border-border cursor-pointer"
+              onClick={() => {
+                setGalleryIndex(index);
+                setGalleryOpen(true);
+              }}
             >
               {/* Image preview */}
               <img
@@ -134,14 +155,20 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
               />
 
               {/* Overlay with delete button */}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                 <button
-                  onClick={() => handleRemoveImage(image.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveImage(image.id);
+                  }}
                   className="p-1.5 rounded-lg bg-destructive text-destructive-foreground hover:opacity-90"
                   title="ลบภาพ"
                 >
                   <X size={14} />
                 </button>
+                <div className="rounded-lg bg-white/90 px-2 py-1 text-xs text-foreground">
+                  ขยายภาพ
+                </div>
               </div>
 
               {/* Filename tooltip */}
@@ -160,6 +187,18 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
           <span className="text-sm">ยังไม่มีภาพ</span>
         </div>
       )}
+
+      {galleryOpen && images.length > 0 && (
+        <ImageViewer
+          images={images}
+          currentIndex={galleryIndex}
+          onPrevious={() => setGalleryIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))}
+          onNext={() => setGalleryIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))}
+          onSelectIndex={(idx) => setGalleryIndex(idx)}
+          onClose={() => setGalleryOpen(false)}
+        />
+      )}
+
     </div>
   );
 }

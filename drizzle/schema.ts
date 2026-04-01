@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, serial, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 // Define enums
 export const roleEnum = pgEnum("role", ["user", "admin"]);
@@ -34,7 +34,7 @@ export type InsertUser = typeof users.$inferInsert;
 // Work Records Table
 export const workRecords = pgTable("workRecords", {
   id: serial("id").primaryKey(),
-  userId: serial("userId").notNull().references(() => users.id),
+  userId: integer("userId").notNull().references(() => users.id),
   date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
   month: varchar("month", { length: 10 }).notNull(), // ม.ค., ก.พ., มี.ค., etc.
   customerName: text("customerName"),
@@ -55,7 +55,7 @@ export type InsertWorkRecord = typeof workRecords.$inferInsert;
 // Work Record Images Table
 export const workRecordImages = pgTable("workRecordImages", {
   id: serial("id").primaryKey(),
-  recordId: serial("recordId").notNull().references(() => workRecords.id, { onDelete: "cascade" }),
+  recordId: integer("recordId").notNull().references(() => workRecords.id, { onDelete: "cascade" }),
   filename: varchar("filename", { length: 255 }).notNull(),
   url: text("url").notNull(),
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
